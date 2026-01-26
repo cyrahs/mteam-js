@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MTeam FREE Torrents Extractor
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  获取页面上所有标记为FREE的torrent id并通过API获取下载链接
 // @author       cyrah
 // @license      MIT
@@ -19,7 +19,8 @@
     function getConfig() {
         const defaultConfig = {
             apiEndpoint: 'https://api.m-team.cc/api/torrent/genDlToken',
-            apiKey: ''
+            apiKey: '',
+            openUrl: ''
         };
         try {
             const saved = localStorage.getItem(CONFIG_KEY);
@@ -387,6 +388,18 @@
             console.log('\n完整结果:');
             console.log(resultTextWithInfo);
 
+            // 复制完成后按需打开指定网址
+            if (copied) {
+                const openUrl = (config.openUrl || '').trim();
+                if (openUrl) {
+                    try {
+                        window.open(openUrl, '_blank', 'noopener');
+                    } catch (e) {
+                        console.warn('自动打开网址失败:', e);
+                    }
+                }
+            }
+
             // 保存到全局变量
             window.freeTorrentIds = freeTorrents.map(t => t.id);
             window.freeTorrents = freeTorrents;
@@ -458,6 +471,13 @@
                     style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
                     placeholder="请输入API Key">
             </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">复制后自动打开网址 (可选):</label>
+                <input type="text" id="mteam-open-url" value="${config.openUrl || ''}" 
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;"
+                    placeholder="例如: http://localhost:8080 或 qbittorrent://">
+                <small style="color: #666;">留空则不自动打开新标签页</small>
+            </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button id="mteam-settings-cancel" style="padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: #f5f5f5;">取消</button>
                 <button id="mteam-settings-save" style="padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; background: #1890ff; color: white;">保存</button>
@@ -474,13 +494,14 @@
         document.getElementById('mteam-settings-save').onclick = () => {
             const apiEndpoint = document.getElementById('mteam-api-endpoint').value.trim();
             const apiKey = document.getElementById('mteam-api-key').value.trim();
+            const openUrl = document.getElementById('mteam-open-url').value.trim();
 
             if (!apiEndpoint) {
                 alert('API Endpoint不能为空');
                 return;
             }
 
-            saveConfig({ apiEndpoint, apiKey });
+            saveConfig({ apiEndpoint, apiKey, openUrl });
             alert('设置已保存');
             panel.remove();
         };
