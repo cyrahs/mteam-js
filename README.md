@@ -8,19 +8,22 @@ Automatically finds all torrents marked as "FREE" on M-Team pages and fetches do
 
 - Detects FREE-marked torrents on the page
 - Concurrent fetching for faster results (default: 5)
+- Retries once if a link fetch fails
 - Copies download links to the clipboard
-- Optionally opens a specified URL after copying (e.g., qBittorrent Web UI)
+- Optionally opens a specified URL after copying (default: only when all links are fetched)
+- Settings panel auto-localizes based on browser language (zh/en)
 - Real-time progress display
-- Customizable API settings
+- Required API settings (Endpoint + Key)
 
 ## Configuration
 
 1. Visit M-Team and find the floating button at the bottom-right of the page
 2. Click the gear icon button to the right of the main button to open the settings panel
 3. Fill in:
-   - API Endpoint: `https://api.m-team.cc/api/torrent/genDlToken`
-   - API Key (x-api-key): your API key
+   - API Endpoint: `https://api.m-team.cc/api/torrent/genDlToken` (required)
+   - API Key (x-api-key): your API key (required)
    - Open URL after copy (optional): e.g. `http://localhost:8080` or `qbittorrent://`
+   - Open even if some links fail (optional checkbox)
 4. Click Save
 
 ## Usage
@@ -29,7 +32,7 @@ Automatically finds all torrents marked as "FREE" on M-Team pages and fetches do
 2. Click the floating button in the bottom-right corner
 3. Wait until processing completes (the button shows progress)
 4. The download links are copied to the clipboard
-5. If configured, the specified URL opens in a new tab after copying
+5. If configured, the specified URL opens in a new tab after copying (or always, if you enable the checkbox)
 
 ## Security & Storage
 
@@ -42,7 +45,7 @@ Automatically finds all torrents marked as "FREE" on M-Team pages and fetches do
 - Processing (shows progress like 5/10)
 - Done (shows success count and copied)
 - Not found
-- Needs API configuration
+- Needs API configuration (missing Endpoint/Key)
 
 ## Console Helpers
 
