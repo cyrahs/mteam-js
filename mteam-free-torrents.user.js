@@ -1,7 +1,8 @@
 // ==UserScript==
-// @name         MTeam FREE Torrents Extractor
+// @name         M-Team FREE Torrents Extractor
+// @name:zh-CN   M-Team 免费种子提取
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  获取页面上所有标记为FREE的torrent id并通过API获取下载链接
 // @author       cyrah
 // @license      MIT
@@ -456,7 +457,7 @@
 
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; color: #1890ff;">MTeam FREE 种子设置</h3>
+                <h3 style="margin: 0; color: #1890ff;">M-Team FREE 种子设置</h3>
                 <button id="mteam-settings-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
             </div>
             <div style="margin-bottom: 15px;">

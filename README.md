@@ -1,55 +1,60 @@
-# MTeam FREE 种子提取器
+# M-Team FREE Torrent Extractor
 
-自动识别 MTeam 页面上所有标记为 "FREE" 的种子，并通过 API 批量获取下载链接。
+English | [中文](README_CN.md)
 
-## 功能特点
+Automatically finds all torrents marked as "FREE" on M-Team pages and fetches download links in bulk via the API.
 
-- 🔍 自动识别页面上的 FREE 标记种子
-- 🚀 并发处理，提高获取速度（默认5个并发）
-- 📋 自动复制下载链接到剪贴板
-- 📊 实时显示处理进度
-- ⚙️ 支持自定义 API 配置
+## Features
 
-## 配置方法
+- Detects FREE-marked torrents on the page
+- Concurrent fetching for faster results (default: 5)
+- Copies download links to the clipboard
+- Optionally opens a specified URL after copying (e.g., qBittorrent Web UI)
+- Real-time progress display
+- Customizable API settings
 
-1. 访问 MTeam 网站后，在页面右下角找到"获取FREE种子"按钮
-2. **右键点击**按钮，打开设置面板
-3. 填写配置信息：
-   - **API Endpoint**: `https://api.m-team.cc/api/torrent/genDlToken`
-   - **API Key (x-api-key)**: 输入你的 API Key
-4. 点击"保存"
+## Configuration
 
-## 使用方法
+1. Visit M-Team and find the floating button at the bottom-right of the page
+2. Right-click the button to open the settings panel
+3. Fill in:
+   - API Endpoint: `https://api.m-team.cc/api/torrent/genDlToken`
+   - API Key (x-api-key): your API key
+   - Open URL after copy (optional): e.g. `http://localhost:8080` or `qbittorrent://`
+4. Click Save
 
-1. 打开包含 FREE 种子的页面
-2. 点击页面右下角的**"获取FREE种子"**按钮
-3. 等待处理完成（按钮会显示进度，如：`处理中... 5/10`）
-4. 完成后，下载链接已自动复制到剪贴板
+## Usage
 
-## 按钮状态
+1. Open a page that contains FREE torrents
+2. Click the floating button in the bottom-right corner
+3. Wait until processing completes (the button shows progress)
+4. The download links are copied to the clipboard
+5. If configured, the specified URL opens in a new tab after copying
 
-- **获取FREE种子**: 初始状态
-- **处理中... 5/10**: 正在处理
-- **11/11 成功 已复制到剪贴板**: 处理完成
-- **未找到**: 页面上没有 FREE 种子
-- **请配置API**: 需要先配置 API
+## Button States
 
-## 控制台命令
+- Idle
+- Processing (shows progress like 5/10)
+- Done (shows success count and copied)
+- Not found
+- Needs API configuration
+
+## Console Helpers
 
 ```javascript
-getAllFreeTorrentIds()        // 获取所有 FREE 种子 ID
-getMTeamConfig()              // 查看当前配置
-showMTeamSettings()           // 显示设置面板
-window.freeTorrentDownloadLinksArray  // 下载链接数组
+getAllFreeTorrentIds()        // Get all FREE torrent IDs
+getMTeamConfig()              // Read current config
+showMTeamSettings()           // Open settings panel
+window.freeTorrentDownloadLinksArray  // Array of download links
 ```
 
-## 常见问题
+## FAQ
 
-**Q: 找不到 FREE 种子？**  
-A: 确保页面已完全加载，刷新后重试。
+Q: No FREE torrents found?
+A: Make sure the page is fully loaded, then refresh and try again.
 
-**Q: API 调用失败？**  
-A: 检查 API Endpoint 和 API Key 是否正确，查看控制台错误信息。
+Q: API request failed?
+A: Double-check the API Endpoint and API Key, and inspect console errors.
 
-**Q: 下载链接未复制？**  
-A: 检查浏览器剪贴板权限，或从控制台复制：`window.freeTorrentDownloadLinksArray`
+Q: Clipboard copy failed?
+A: Check browser clipboard permissions, or copy from console: `window.freeTorrentDownloadLinksArray`
