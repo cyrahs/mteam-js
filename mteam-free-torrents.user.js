@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         M-Team 免费种子提取
 // @name:en      M-Team FREE Torrents Extractor
-// @namespace    http://tampermonkey.net/
-// @version      2.4
+// @namespace    https://github.com/cyrahs
+// @version      2.5
 // @description  获取页面上所有标记为FREE的torrent id并通过API获取下载链接
 // @description:en  Finds all FREE-marked torrents on the page and fetches download links via the API.
 // @author       cyrah
 // @license      MIT
+// @homepageURL  https://github.com/cyrahs/mteam-js
+// @supportURL   https://github.com/cyrahs/mteam-js
 // @match        https://*.m-team.cc/*
 // @match        https://m-team.cc/*
+// @icon         https://kp.m-team.cc/favicon.ico
 // @grant        none
 // ==/UserScript==
 
