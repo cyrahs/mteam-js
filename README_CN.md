@@ -16,7 +16,7 @@
 ## 配置方法
 
 1. 访问 M-Team 网站后，在页面右下角找到"获取FREE种子"按钮
-2. **右键点击**按钮，打开设置面板
+2. 点击主按钮右侧的**齿轮图标**，打开设置面板
 3. 填写配置信息：
    - **API Endpoint**: `https://api.m-team.cc/api/torrent/genDlToken`
    - **API Key (x-api-key)**: 输入你的 API Key

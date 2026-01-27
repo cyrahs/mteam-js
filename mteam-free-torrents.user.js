@@ -2,7 +2,7 @@
 // @name         M-Team 免费种子提取
 // @name:en      M-Team FREE Torrents Extractor
 // @namespace    https://github.com/cyrahs
-// @version      2.5
+// @version      2.6
 // @description  获取页面上所有标记为FREE的torrent id并通过API获取下载链接
 // @description:en  Finds all FREE-marked torrents on the page and fetches download links via the API.
 // @author       cyrah
@@ -530,47 +530,109 @@
 
     // 创建悬浮按钮
     function createFloatingButton() {
-        const button = document.createElement('button');
-        button.id = 'mteam-free-btn';
-        button.textContent = '获取FREE种子';
-        button.style.cssText = `
+        const wrapper = document.createElement('div');
+        wrapper.id = 'mteam-free-btn-wrap';
+        wrapper.style.cssText = `
             position: fixed;
             bottom: 20px;
             right: 20px;
-            padding: 12px 24px;
+            display: inline-flex;
+            align-items: center;
             background: #1890ff;
-            color: white;
-            border: none;
             border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
+            overflow: hidden;
             box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
             z-index: 9999;
-            transition: all 0.3s;
+            transition: transform 0.3s;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
 
-        button.onmouseover = () => {
-            button.style.background = '#40a9ff';
-            button.style.transform = 'scale(1.05)';
+        const mainButton = document.createElement('button');
+        mainButton.id = 'mteam-free-btn';
+        mainButton.textContent = '获取FREE种子';
+        mainButton.style.cssText = `
+            height: 44px;
+            padding: 0 14px 0 20px;
+            background: transparent;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            transition: color 0.3s;
+        `;
+
+        const divider = document.createElement('span');
+        divider.style.cssText = `
+            width: 1px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 1px;
+            align-self: stretch;
+            margin: 6px 0;
+            pointer-events: none;
+        `;
+
+        const settingsButton = document.createElement('button');
+        settingsButton.id = 'mteam-settings-btn';
+        settingsButton.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+                style="width: 22px; height: 22px; display: block; fill: currentColor;">
+                <path d="M19.14,12.94c0.04-0.31,0.06-0.63,0.06-0.94s-0.02-0.63-0.06-0.94l2.03-1.58
+                    c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.11-0.2-0.35-0.28-0.57-0.22l-2.39,0.96
+                    c-0.5-0.38-1.04-0.7-1.64-0.94L14.5,2.5c-0.02-0.22-0.2-0.39-0.42-0.39h-3.84
+                    c-0.22,0-0.4,0.17-0.42,0.39L9.44,5.35C8.84,5.59,8.3,5.91,7.8,6.29L5.41,5.33
+                    c-0.21-0.08-0.46,0.02-0.57,0.22L2.92,8.87C2.81,9.07,2.86,9.34,3.04,9.48l2.03,1.58
+                    C5.03,11.37,5.01,11.69,5.01,12s0.02,0.63,0.06,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61
+                    l1.92,3.32c0.11,0.2,0.35,0.28,0.57,0.22l2.39-0.96c0.5,0.38,1.04,0.7,1.64,0.94
+                    l0.38,2.85c0.02,0.22,0.2,0.39,0.42,0.39h3.84c0.22,0,0.4-0.17,0.42-0.39l0.38-2.85
+                    c0.6-0.24,1.14-0.56,1.64-0.94l2.39,0.96c0.21,0.08,0.46-0.02,0.57-0.22l1.92-3.32
+                    c0.11-0.2,0.06-0.46-0.12-0.61L19.14,12.94z M12,15.6c-1.99,0-3.6-1.61-3.6-3.6
+                    s1.61-3.6,3.6-3.6s3.6,1.61,3.6,3.6S13.99,15.6,12,15.6z"/>
+            </svg>
+        `;
+        settingsButton.title = '打开设置';
+        settingsButton.setAttribute('aria-label', '设置');
+        settingsButton.style.cssText = `
+            height: 44px;
+            padding: 0 10px;
+            min-width: 40px;
+            background: transparent;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s;
+        `;
+
+        wrapper.onmouseenter = () => {
+            wrapper.style.background = '#40a9ff';
+            wrapper.style.transform = 'scale(1.05)';
         };
-        button.onmouseout = () => {
-            button.style.background = '#1890ff';
-            button.style.transform = 'scale(1)';
+        wrapper.onmouseleave = () => {
+            wrapper.style.background = '#1890ff';
+            wrapper.style.transform = 'scale(1)';
         };
 
-        button.onclick = () => {
+        mainButton.onclick = () => {
             main();
         };
 
-        // 右键点击打开设置
-        button.oncontextmenu = (e) => {
-            e.preventDefault();
+        settingsButton.onclick = () => {
             showSettingsPanel();
         };
 
-        document.body.appendChild(button);
+        wrapper.appendChild(mainButton);
+        wrapper.appendChild(divider);
+        wrapper.appendChild(settingsButton);
+        document.body.appendChild(wrapper);
     }
 
     // 初始化

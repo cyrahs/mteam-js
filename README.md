@@ -16,7 +16,7 @@ Automatically finds all torrents marked as "FREE" on M-Team pages and fetches do
 ## Configuration
 
 1. Visit M-Team and find the floating button at the bottom-right of the page
-2. Right-click the button to open the settings panel
+2. Click the gear icon button to the right of the main button to open the settings panel
 3. Fill in:
    - API Endpoint: `https://api.m-team.cc/api/torrent/genDlToken`
    - API Key (x-api-key): your API key
