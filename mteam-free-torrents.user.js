@@ -12,14 +12,19 @@
 // @match        https://*.m-team.cc/*
 // @match        https://m-team.cc/*
 // @icon         https://kp.m-team.cc/favicon.ico
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
 // ==/UserScript==
 
 (function () {
     'use strict';
 
-    // 配置管理（使用 localStorage）
-    const CONFIG_KEY = 'mteam_free_torrents_config';
+    // 配置管理（使用 GM 存储）
+    const CONFIG_KEYS = {
+        apiEndpoint: 'mteam_api_endpoint',
+        apiKey: 'mteam_api_key',
+        openUrl: 'mteam_open_url'
+    };
 
     function getConfig() {
         const defaultConfig = {
@@ -28,10 +33,24 @@
             openUrl: ''
         };
         try {
-            const saved = localStorage.getItem(CONFIG_KEY);
-            if (saved) {
-                return { ...defaultConfig, ...JSON.parse(saved) };
+            const storedEndpoint = GM_getValue(CONFIG_KEYS.apiEndpoint, undefined);
+            const storedApiKey = GM_getValue(CONFIG_KEYS.apiKey, undefined);
+            const storedOpenUrl = GM_getValue(CONFIG_KEYS.openUrl, undefined);
+
+            const hasGMValues =
+                storedEndpoint !== undefined ||
+                storedApiKey !== undefined ||
+                storedOpenUrl !== undefined;
+
+            if (hasGMValues) {
+                return {
+                    ...defaultConfig,
+                    apiEndpoint: storedEndpoint !== undefined ? storedEndpoint : defaultConfig.apiEndpoint,
+                    apiKey: storedApiKey !== undefined ? storedApiKey : defaultConfig.apiKey,
+                    openUrl: storedOpenUrl !== undefined ? storedOpenUrl : defaultConfig.openUrl
+                };
             }
+
         } catch (e) {
             console.error('读取配置失败:', e);
         }
@@ -40,7 +59,9 @@
 
     function saveConfig(config) {
         try {
-            localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            GM_setValue(CONFIG_KEYS.apiEndpoint, config.apiEndpoint);
+            GM_setValue(CONFIG_KEYS.apiKey, config.apiKey);
+            GM_setValue(CONFIG_KEYS.openUrl, config.openUrl);
         } catch (e) {
             console.error('保存配置失败:', e);
         }

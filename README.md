@@ -31,6 +31,11 @@ Automatically finds all torrents marked as "FREE" on M-Team pages and fetches do
 4. The download links are copied to the clipboard
 5. If configured, the specified URL opens in a new tab after copying
 
+## Security & Storage
+
+- API settings are stored in userscript manager storage (GM\_*), not in `localStorage`.
+- Console helpers are exposed on `window` for convenience; they can reveal your API key in the page context.
+
 ## Button States
 
 - Idle
