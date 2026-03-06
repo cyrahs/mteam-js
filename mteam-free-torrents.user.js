@@ -2,7 +2,7 @@
 // @name         M-Team 免费种子提取
 // @name:en      M-Team FREE Torrents Extractor
 // @namespace    https://github.com/cyrahs
-// @version      2.8
+// @version      2.11
 // @description  获取页面上所有标记为FREE的torrent id并通过API获取下载链接
 // @description:en  Finds all FREE-marked torrents on the page and fetches download links via the API.
 // @author       cyrah
@@ -24,7 +24,8 @@
         apiEndpoint: 'mteam_api_endpoint',
         apiKey: 'mteam_api_key',
         openUrl: 'mteam_open_url',
-        openUrlOnPartialSuccess: 'mteam_open_url_on_partial_success'
+        openUrlOnPartialSuccess: 'mteam_open_url_on_partial_success',
+        minFreeHours: 'mteam_min_free_hours'
     };
 
     // 简单 i18n：根据浏览器语言在中文/英文间切换
@@ -39,6 +40,7 @@
             alertConfigRequired: '请先配置 API Endpoint 和 API Key',
             alertApiEndpointRequired: 'API Endpoint不能为空',
             alertApiKeyRequired: 'API Key不能为空',
+            alertMinFreeHoursInvalid: '过滤时长必须是大于0的数字',
             alertSaved: '设置已保存',
             settingsTitle: 'M-Team FREE 种子设置',
             settingsCloseTitle: '关闭',
@@ -53,6 +55,8 @@
             openUrlHint: '留空则不自动打开新标签页',
             openUrlAlwaysLabel: '无论是否全部获取成功都自动打开网址',
             openUrlAlwaysHint: '未勾选时，仅当全部成功才自动打开网址',
+            minFreeHoursLabel: '过滤时长(小时):',
+            minFreeHoursHint: '仅保留剩余FREE时间大于等于该值的种子，例如 24 表示 1 天',
             cancelButton: '取消',
             saveButton: '保存'
         },
@@ -66,6 +70,7 @@
             alertConfigRequired: 'Please configure API Endpoint and API Key first',
             alertApiEndpointRequired: 'API Endpoint is required',
             alertApiKeyRequired: 'API Key is required',
+            alertMinFreeHoursInvalid: 'Filter duration must be a number greater than 0',
             alertSaved: 'Settings saved',
             settingsTitle: 'M-Team FREE Torrent Settings',
             settingsCloseTitle: 'Close',
@@ -80,6 +85,8 @@
             openUrlHint: 'Leave empty to disable auto-open',
             openUrlAlwaysLabel: 'Open URL even if some links fail',
             openUrlAlwaysHint: 'When unchecked, URL opens only if all succeed',
+            minFreeHoursLabel: 'Filter Duration (hours):',
+            minFreeHoursHint: 'Keep only torrents with remaining FREE time >= this value, e.g. 24 means 1 day',
             cancelButton: 'Cancel',
             saveButton: 'Save'
         }
@@ -101,24 +108,33 @@
         return `${success}/${total} ${t('doneSuffix')}`;
     }
 
+    function sanitizeMinFreeHours(value, fallback = 24) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+        return parsed;
+    }
+
     function getConfig() {
         const defaultConfig = {
             apiEndpoint: 'https://api.m-team.cc/api/torrent/genDlToken',
             apiKey: '',
             openUrl: '',
-            openUrlOnPartialSuccess: false
+            openUrlOnPartialSuccess: false,
+            minFreeHours: 24
         };
         try {
             const storedEndpoint = GM_getValue(CONFIG_KEYS.apiEndpoint, undefined);
             const storedApiKey = GM_getValue(CONFIG_KEYS.apiKey, undefined);
             const storedOpenUrl = GM_getValue(CONFIG_KEYS.openUrl, undefined);
             const storedOpenUrlOnPartialSuccess = GM_getValue(CONFIG_KEYS.openUrlOnPartialSuccess, undefined);
+            const storedMinFreeHours = GM_getValue(CONFIG_KEYS.minFreeHours, undefined);
 
             const hasGMValues =
                 storedEndpoint !== undefined ||
                 storedApiKey !== undefined ||
                 storedOpenUrl !== undefined ||
-                storedOpenUrlOnPartialSuccess !== undefined;
+                storedOpenUrlOnPartialSuccess !== undefined ||
+                storedMinFreeHours !== undefined;
 
             if (hasGMValues) {
                 return {
@@ -128,7 +144,11 @@
                     openUrl: storedOpenUrl !== undefined ? storedOpenUrl : defaultConfig.openUrl,
                     openUrlOnPartialSuccess: storedOpenUrlOnPartialSuccess !== undefined
                         ? Boolean(storedOpenUrlOnPartialSuccess)
-                        : defaultConfig.openUrlOnPartialSuccess
+                        : defaultConfig.openUrlOnPartialSuccess,
+                    minFreeHours: sanitizeMinFreeHours(
+                        storedMinFreeHours !== undefined ? storedMinFreeHours : defaultConfig.minFreeHours,
+                        defaultConfig.minFreeHours
+                    )
                 };
             }
 
@@ -144,6 +164,7 @@
             GM_setValue(CONFIG_KEYS.apiKey, config.apiKey);
             GM_setValue(CONFIG_KEYS.openUrl, config.openUrl);
             GM_setValue(CONFIG_KEYS.openUrlOnPartialSuccess, Boolean(config.openUrlOnPartialSuccess));
+            GM_setValue(CONFIG_KEYS.minFreeHours, sanitizeMinFreeHours(config.minFreeHours));
         } catch (e) {
             console.error('保存配置失败:', e);
         }
@@ -269,12 +290,257 @@
         return null;
     }
 
+    const HOUR_MS = 60 * 60 * 1000;
+
+    function normalizeText(text) {
+        return (text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function formatDuration(ms) {
+        if (!Number.isFinite(ms) || ms < 0) return 'unknown';
+        const totalSeconds = Math.floor(ms / 1000);
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+
+    function unitToMs(unit) {
+        const raw = (unit || '').trim();
+        const normalized = raw.toLowerCase();
+
+        if (raw === '天' || raw === '日' || normalized === 'd' || normalized.startsWith('day')) {
+            return 24 * 60 * 60 * 1000;
+        }
+        if (raw === '小时' || raw === '小時' || raw === '时' || raw === '時' || normalized === 'h' || normalized.startsWith('hour')) {
+            return 60 * 60 * 1000;
+        }
+        if (raw === '分钟' || raw === '分鐘' || raw === '分' || normalized === 'm' || normalized.startsWith('min')) {
+            return 60 * 1000;
+        }
+        if (raw === '秒' || normalized === 's' || normalized.startsWith('sec')) {
+            return 1000;
+        }
+        return null;
+    }
+
+    function parseDurationTokensToMs(text, options = {}) {
+        const input = normalizeText(text);
+        if (!input) return null;
+
+        const requireContext = options.requireContext !== false;
+        const tokenRegex = /(\d+(?:\.\d+)?)\s*(天|日|d(?:ays?)?|小时|小時|时|時|h(?:ours?)?|分钟|分鐘|分|m(?:in(?:ute)?s?)?|秒|s(?:ec(?:ond)?s?)?)/gi;
+        const contextRegex = /(?:free|免费|剩余|剩下|还剩|倒计时|remaining|left)/i;
+        let totalMs = 0;
+        let hasMatch = false;
+        let match;
+
+        while ((match = tokenRegex.exec(input)) !== null) {
+            if (requireContext) {
+                const contextStart = Math.max(0, match.index - 24);
+                const contextEnd = Math.min(input.length, tokenRegex.lastIndex + 24);
+                const contextText = input.slice(contextStart, contextEnd);
+                if (!contextRegex.test(contextText)) {
+                    continue;
+                }
+            }
+
+            const value = parseFloat(match[1]);
+            const unitMs = unitToMs(match[2]);
+            if (!Number.isFinite(value) || !unitMs) continue;
+            totalMs += value * unitMs;
+            hasMatch = true;
+        }
+
+        return hasMatch ? Math.round(totalMs) : null;
+    }
+
+    // 专门处理类似: "FREE 4h 13min" / "FREE4h13min" / "免费 4小时 13分钟"
+    function parseFreeBadgeToMs(text) {
+        const input = normalizeText(text);
+        if (!input) return null;
+
+        const badgeRegex = /(?:free|免费)\s*([0-9a-zA-Z.:：\u4e00-\u9fa5\s]{1,48})/gi;
+        let match;
+
+        while ((match = badgeRegex.exec(input)) !== null) {
+            const badgeTail = normalizeText(match[1]);
+            if (!badgeTail) continue;
+
+            const durationMs = parseDurationTokensToMs(badgeTail, { requireContext: false });
+            if (durationMs !== null) return durationMs;
+
+            const clockMs = parseClockToMs(`free ${badgeTail}`);
+            if (clockMs !== null) return clockMs;
+        }
+
+        return null;
+    }
+
+    function parseClockToMs(text) {
+        const input = normalizeText(text);
+        if (!input) return null;
+
+        const contextRegex = /(?:free|免费|剩余|剩下|还剩|倒计时|remaining|left)/i;
+        if (!contextRegex.test(input)) return null;
+
+        const clockRegex = /(\d{1,3})\s*[:：]\s*(\d{1,2})(?:\s*[:：]\s*(\d{1,2})(?:\s*[:：]\s*(\d{1,2}))?)?/g;
+        let match;
+        while ((match = clockRegex.exec(input)) !== null) {
+            const values = match.slice(1).filter(v => v !== undefined).map(v => Number(v));
+            if (values.some(v => !Number.isFinite(v))) continue;
+
+            let days = 0;
+            let hours = 0;
+            let minutes = 0;
+            let seconds = 0;
+
+            if (values.length === 4) {
+                [days, hours, minutes, seconds] = values;
+            } else if (values.length === 3) {
+                [hours, minutes, seconds] = values;
+            } else if (values.length === 2) {
+                [hours, minutes] = values;
+            } else {
+                continue;
+            }
+
+            return (((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000;
+        }
+
+        return null;
+    }
+
+    function parseExpiryDateToMs(text) {
+        const input = normalizeText(text);
+        if (!input) return null;
+
+        const keywordRegex = /(?:free\s*(?:until|to)|到期|截止|结束|結束|失效|expires?)/i;
+        if (!keywordRegex.test(input)) return null;
+
+        const dateMatch = input.match(/(\d{4}[./-]\d{1,2}[./-]\d{1,2}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/);
+        if (!dateMatch) return null;
+
+        const normalizedDate = dateMatch[1].replace(/[./]/g, '-');
+        const parts = normalizedDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (!parts) return null;
+
+        const year = Number(parts[1]);
+        const month = Number(parts[2]) - 1;
+        const day = Number(parts[3]);
+        const hour = Number(parts[4] || 0);
+        const minute = Number(parts[5] || 0);
+        const second = Number(parts[6] || 0);
+
+        const expiresAt = new Date(year, month, day, hour, minute, second).getTime();
+        if (!Number.isFinite(expiresAt)) return null;
+
+        const remainingMs = expiresAt - Date.now();
+        return remainingMs > 0 ? remainingMs : null;
+    }
+
+    function getFreeContextWindows(text) {
+        const input = normalizeText(text);
+        if (!input) return [];
+
+        const windows = [];
+        const radius = 80;
+        const freeRegex = /free|免费/gi;
+        let match;
+        while ((match = freeRegex.exec(input)) !== null) {
+            const start = Math.max(0, match.index - 20);
+            const end = Math.min(input.length, match.index + match[0].length + radius);
+            windows.push(input.slice(start, end));
+        }
+
+        return windows.length > 0 ? windows : [input];
+    }
+
+    function parseRemainingMsFromText(text) {
+        const input = normalizeText(text);
+        if (!input) return null;
+
+        const badgeMs = parseFreeBadgeToMs(input);
+        if (badgeMs !== null) return badgeMs;
+
+        const durationMs = parseDurationTokensToMs(input);
+        if (durationMs !== null) return durationMs;
+
+        const expiryMs = parseExpiryDateToMs(input);
+        if (expiryMs !== null) return expiryMs;
+
+        const clockMs = parseClockToMs(input);
+        if (clockMs !== null) return clockMs;
+
+        return null;
+    }
+
+    function collectRemainingTimeTexts(element, container) {
+        const textSet = new Set();
+        const attrNames = ['title', 'aria-label', 'data-title', 'data-original-title', 'data-tooltip', 'data-content'];
+        const nodes = new Set();
+
+        let current = element;
+        for (let i = 0; i < 6 && current; i++) {
+            nodes.add(current);
+            current = current.parentElement;
+        }
+
+        if (container) {
+            nodes.add(container);
+            if (container.parentElement) {
+                nodes.add(container.parentElement);
+            }
+        }
+
+        nodes.forEach(node => {
+            const nodeText = normalizeText(node.textContent);
+            if (nodeText) textSet.add(nodeText);
+
+            attrNames.forEach(attr => {
+                const value = normalizeText(node.getAttribute(attr));
+                if (value) textSet.add(value);
+            });
+        });
+
+        if (container) {
+            const tooltipNodes = container.querySelectorAll('[title], [aria-label], [data-title], [data-original-title], [data-tooltip], [data-content]');
+            tooltipNodes.forEach(node => {
+                attrNames.forEach(attr => {
+                    const value = normalizeText(node.getAttribute(attr));
+                    if (value) textSet.add(value);
+                });
+            });
+        }
+
+        return Array.from(textSet);
+    }
+
+    function getFreeRemainingMs(element, container) {
+        const texts = collectRemainingTimeTexts(element, container);
+        for (const text of texts) {
+            const windows = getFreeContextWindows(text);
+            for (const windowText of windows) {
+                const remainingMs = parseRemainingMsFromText(windowText);
+                if (remainingMs !== null) {
+                    return remainingMs;
+                }
+            }
+        }
+        return null;
+    }
+
     // 主函数：获取所有FREE torrent id
     function getAllFreeTorrentIds() {
         const freeElements = findFreeElements();
         const torrentIds = [];
         const seenIds = new Set();
         const seenElements = new Set();
+        const filteredByRemainingTime = [];
+        const unknownRemainingTime = [];
+        const config = getConfig();
+        const minFreeHours = sanitizeMinFreeHours(config.minFreeHours, 24);
+        const minFreeRemainingMs = minFreeHours * HOUR_MS;
 
         freeElements.forEach(element => {
             // 避免处理同一个父容器中的多个FREE元素
@@ -294,16 +560,45 @@
                 const containerElement = container || element.parentElement;
                 const titleElement = containerElement?.querySelector('a, [class*="title"], [class*="name"]');
                 const title = titleElement?.textContent?.trim() || element.textContent.trim().substring(0, 100);
+                const remainingMs = getFreeRemainingMs(element, containerElement);
+
+                if (remainingMs !== null && remainingMs < minFreeRemainingMs) {
+                    filteredByRemainingTime.push({
+                        id: torrentId,
+                        title: title,
+                        remainingMs: remainingMs
+                    });
+                    return;
+                }
+
+                if (remainingMs === null) {
+                    unknownRemainingTime.push({
+                        id: torrentId,
+                        title: title
+                    });
+                }
 
                 torrentIds.push({
                     id: torrentId,
                     element: element,
                     container: containerElement,
                     title: title,
-                    text: element.textContent.trim().substring(0, 100)
+                    text: element.textContent.trim().substring(0, 100),
+                    freeRemainingMs: remainingMs
                 });
             }
         });
+
+        if (filteredByRemainingTime.length > 0) {
+            console.log(`[FREE过滤] 已过滤 ${filteredByRemainingTime.length} 个剩余时间 < ${minFreeHours}h 的种子`);
+            filteredByRemainingTime.slice(0, 10).forEach(item => {
+                console.log(`  - ${item.id} (${formatDuration(item.remainingMs)}): ${item.title}`);
+            });
+        }
+
+        if (unknownRemainingTime.length > 0) {
+            console.warn(`[FREE过滤] ${unknownRemainingTime.length} 个种子未识别到剩余FREE时间，已保留`);
+        }
 
         return torrentIds;
     }
@@ -611,6 +906,13 @@
                 <small style="color: #666;">${t('openUrlHint')}</small>
             </div>
             <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">${t('minFreeHoursLabel')}</label>
+                <input type="number" id="mteam-min-free-hours" value="${sanitizeMinFreeHours(config.minFreeHours, 24)}"
+                    min="0.1" step="0.1"
+                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                <small style="color: #666;">${t('minFreeHoursHint')}</small>
+            </div>
+            <div style="margin-bottom: 15px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer;">
                     <input type="checkbox" id="mteam-open-url-on-partial-success" ${config.openUrlOnPartialSuccess ? 'checked' : ''}>
                     ${t('openUrlAlwaysLabel')}
@@ -634,6 +936,8 @@
             const apiEndpoint = document.getElementById('mteam-api-endpoint').value.trim();
             const apiKey = document.getElementById('mteam-api-key').value.trim();
             const openUrl = document.getElementById('mteam-open-url').value.trim();
+            const minFreeHoursRaw = document.getElementById('mteam-min-free-hours').value.trim();
+            const minFreeHours = Number(minFreeHoursRaw);
             const openUrlOnPartialSuccess = document.getElementById('mteam-open-url-on-partial-success').checked;
 
             if (!apiEndpoint) {
@@ -644,8 +948,12 @@
                 alert(t('alertApiKeyRequired'));
                 return;
             }
+            if (!Number.isFinite(minFreeHours) || minFreeHours <= 0) {
+                alert(t('alertMinFreeHoursInvalid'));
+                return;
+            }
 
-            saveConfig({ apiEndpoint, apiKey, openUrl, openUrlOnPartialSuccess });
+            saveConfig({ apiEndpoint, apiKey, openUrl, minFreeHours, openUrlOnPartialSuccess });
             alert(t('alertSaved'));
             panel.remove();
         };
